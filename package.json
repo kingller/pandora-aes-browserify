@@ -1,6 +1,6 @@
 {
     "name": "pandora-aes-browserify",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "description": "Javascript AES Crypto Library for browser",
     "keywords": [
         "aes",
