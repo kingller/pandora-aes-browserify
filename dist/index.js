@@ -112,6 +112,7 @@ var AES = /** @class */ (function () {
     /** 12 bytes 的iv */
     AES.prototype.createRandomIv = function () {
         if (typeof window === 'undefined') {
+            // 支持在 Worker 中使用
             var randomIv = crypto.getRandomValues(new Uint8Array(12));
             return browserify_sjcl_1.default.codec.base64.toBits(btoa(String.fromCharCode.apply(String, randomIv)));
         }
