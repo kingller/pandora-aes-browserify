@@ -44,5 +44,8 @@
     "devDependencies": {
         "rimraf": "^3.0.2",
         "typescript": "^5.4.3"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org"
     }
 }
