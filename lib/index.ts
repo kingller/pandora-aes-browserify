@@ -38,6 +38,11 @@ export class AES {
 
     /** 12 bytes 的iv */
     private createRandomIv(): BitArray {
+        if (typeof window === 'undefined') {
+            // 支持在 Worker 中使用
+            const randomIv = crypto.getRandomValues(new Uint8Array(12));
+            return sjcl.codec.base64.toBits(btoa(String.fromCharCode(...(randomIv as unknown as number[]))));
+        }
         return sjcl.random.randomWords(3);
     }
 
@@ -56,7 +61,7 @@ export class AES {
             /** mode */
             mode?: 'ccm' | 'gcm' | 'ocb2';
             /** iv (base64 encode) */
-            iv?: string;
+            iv?: string | Uint8Array;
             /** salt (base64 encode) */
             salt?: string;
         }
@@ -64,7 +69,7 @@ export class AES {
         if (!key) {
             key = this._key;
         }
-        const iv = this.createRandomIv();
+        const iv: BitArray = options?.iv ? null : this.createRandomIv();
         const encryptParams: Partial<IEncryptParams> = {
             mode: 'gcm',
             ts: 128,
@@ -72,18 +77,26 @@ export class AES {
         };
         if (options) {
             for (const k of Object.keys(options)) {
-                let paramValue: string | number | BitArray = (options as { [name: string]: number | string })[k];
-                if ((k === 'salt' || k === 'iv') && typeof paramValue === 'string') {
-                    paramValue = sjcl.codec.base64.toBits(paramValue);
+                let paramValue: string | number | Uint8Array | BitArray = options[k];
+                if (k === 'salt' || k === 'iv') {
+                    if (typeof paramValue === 'string') {
+                        paramValue = sjcl.codec.base64.toBits(paramValue);
+                    } else {
+                        if (k === 'iv' && paramValue instanceof Uint8Array) {
+                            paramValue = sjcl.codec.base64.toBits(
+                                btoa(String.fromCharCode(...(options[k] as unknown as number[])))
+                            );
+                        }
+                    }
                 }
-                (encryptParams as { [name: string]: number | string | BitArray })[k] = paramValue;
+                (encryptParams as { [name: string]: number | string | Uint8Array | BitArray })[k] = paramValue;
             }
         }
-        const encryptedData = (sjcl.encrypt(
+        const encryptedData = sjcl.encrypt(
             sjcl.codec.utf8String.toBits(key),
             JSON.stringify(data),
             encryptParams as IEncryptParams
-        ) as any) as string;
+        ) as any as string;
         const encryptedDataObj = JSON.parse(encryptedData);
         const encryptMsg = `${encryptedDataObj.iv}${encryptedDataObj.ct}`;
         return encryptMsg;
@@ -145,9 +158,11 @@ export class AES {
         };
         if (options) {
             for (const k of Object.keys(options)) {
-                (decryptParams as { [name: string]: number | string })[k] = (options as {
-                    [name: string]: number | string;
-                })[k];
+                (decryptParams as { [name: string]: number | string })[k] = (
+                    options as {
+                        [name: string]: number | string;
+                    }
+                )[k];
             }
         }
 

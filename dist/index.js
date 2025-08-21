@@ -41,7 +41,7 @@ var AES = /** @class */ (function () {
             if (!key) {
                 key = _this._key;
             }
-            var iv = _this.createRandomIv();
+            var iv = (options === null || options === void 0 ? void 0 : options.iv) ? null : _this.createRandomIv();
             var encryptParams = {
                 mode: 'gcm',
                 ts: 128,
@@ -51,15 +51,22 @@ var AES = /** @class */ (function () {
                 for (var _i = 0, _a = Object.keys(options); _i < _a.length; _i++) {
                     var k = _a[_i];
                     var paramValue = options[k];
-                    if ((k === 'salt' || k === 'iv') && typeof paramValue === 'string') {
-                        paramValue = browserify_sjcl_1.default.codec.base64.toBits(paramValue);
+                    if (k === 'salt' || k === 'iv') {
+                        if (typeof paramValue === 'string') {
+                            paramValue = browserify_sjcl_1.default.codec.base64.toBits(paramValue);
+                        }
+                        else {
+                            if (k === 'iv' && paramValue instanceof Uint8Array) {
+                                paramValue = browserify_sjcl_1.default.codec.base64.toBits(btoa(String.fromCharCode.apply(String, options[k])));
+                            }
+                        }
                     }
                     encryptParams[k] = paramValue;
                 }
             }
             var encryptedData = browserify_sjcl_1.default.encrypt(browserify_sjcl_1.default.codec.utf8String.toBits(key), JSON.stringify(data), encryptParams);
             var encryptedDataObj = JSON.parse(encryptedData);
-            var encryptMsg = "" + encryptedDataObj.iv + encryptedDataObj.ct;
+            var encryptMsg = "".concat(encryptedDataObj.iv).concat(encryptedDataObj.ct);
             return encryptMsg;
         };
         /**
@@ -104,6 +111,10 @@ var AES = /** @class */ (function () {
     }
     /** 12 bytes 的iv */
     AES.prototype.createRandomIv = function () {
+        if (typeof window === 'undefined') {
+            var randomIv = crypto.getRandomValues(new Uint8Array(12));
+            return browserify_sjcl_1.default.codec.base64.toBits(btoa(String.fromCharCode.apply(String, randomIv)));
+        }
         return browserify_sjcl_1.default.random.randomWords(3);
     };
     return AES;
